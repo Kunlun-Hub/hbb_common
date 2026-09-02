@@ -114,8 +114,18 @@ const CHARS: &[char] = &[
     'm', 'n', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
 ];
 
-pub const RENDEZVOUS_SERVERS: &[&str] = &["rs-ny.rustdesk.com"];
-pub const RS_PUB_KEY: &str = "OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=";
+pub const RENDEZVOUS_SERVERS: &[&str] = &["10.202.22.90:21116"];
+pub const RS_PUB_KEY: &str = "I17NeGkLtixLRMrtxXvY5jQ3gDiL8yqtktCrMVwb69I=";
+pub const DEFAULT_API_SERVER: &str = "http://10.202.22.90:21114";
+pub const DEFAULT_RELAY_SERVER: &str = "10.202.22.90:21117";
+
+fn default_server_option(key: &str) -> String {
+    match key {
+        keys::OPTION_API_SERVER => DEFAULT_API_SERVER.to_owned(),
+        keys::OPTION_RELAY_SERVER => DEFAULT_RELAY_SERVER.to_owned(),
+        _ => String::new(),
+    }
+}
 
 pub const RENDEZVOUS_PORT: i32 = 21116;
 pub const RELAY_PORT: i32 = 21117;
@@ -1246,7 +1256,7 @@ impl Config {
             &DEFAULT_SETTINGS,
             k,
         )
-        .unwrap_or_default()
+        .unwrap_or_else(|| default_server_option(k))
     }
 
     pub fn get_bool_option(k: &str) -> bool {
@@ -3286,6 +3296,20 @@ mod tests {
     use super::{permanent_password::PERMANENT_PASSWORD_ENC_VERSION, *};
 
     static CONFIG_STATE_TEST_LOCK: Mutex<()> = Mutex::new(());
+
+    #[test]
+    fn desklink_server_defaults_match_zto56_release() {
+        assert_eq!(RENDEZVOUS_SERVERS, &["10.202.22.90:21116"]);
+        assert_eq!(RS_PUB_KEY, "I17NeGkLtixLRMrtxXvY5jQ3gDiL8yqtktCrMVwb69I=");
+        assert_eq!(
+            default_server_option(keys::OPTION_API_SERVER),
+            "http://10.202.22.90:21114"
+        );
+        assert_eq!(
+            default_server_option(keys::OPTION_RELAY_SERVER),
+            "10.202.22.90:21117"
+        );
+    }
 
     struct ConfigStateTestGuard {
         original_config: Config,
