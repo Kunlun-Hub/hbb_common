@@ -69,7 +69,7 @@ lazy_static::lazy_static! {
     static ref ONLINE: Mutex<HashMap<String, i64>> = Default::default();
     pub static ref PROD_RENDEZVOUS_SERVER: RwLock<String> = RwLock::new("".to_owned());
     pub static ref EXE_RENDEZVOUS_SERVER: RwLock<String> = Default::default();
-    pub static ref APP_NAME: RwLock<String> = RwLock::new("RustDesk".to_owned());
+    pub static ref APP_NAME: RwLock<String> = RwLock::new("DeskLink".to_owned());
     static ref KEY_PAIR: Mutex<Option<KeyPair>> = Default::default();
     static ref USER_DEFAULT_CONFIG: RwLock<(UserDefaultConfig, Instant)> = RwLock::new((UserDefaultConfig::load(), Instant::now()));
     pub static ref NEW_STORED_PEER_CONFIG: Mutex<HashSet<String>> = Default::default();
@@ -114,8 +114,18 @@ const CHARS: &[char] = &[
     'm', 'n', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
 ];
 
-pub const RENDEZVOUS_SERVERS: &[&str] = &["rs-ny.rustdesk.com"];
-pub const RS_PUB_KEY: &str = "OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=";
+pub const RENDEZVOUS_SERVERS: &[&str] = &["10.202.22.90:21116"];
+pub const RS_PUB_KEY: &str = "I17NeGkLtixLRMrtxXvY5jQ3gDiL8yqtktCrMVwb69I=";
+pub const DEFAULT_API_SERVER: &str = "http://10.202.22.90:21114";
+pub const DEFAULT_RELAY_SERVER: &str = "10.202.22.90:21117";
+
+fn default_server_option(key: &str) -> String {
+    match key {
+        keys::OPTION_API_SERVER => DEFAULT_API_SERVER.to_owned(),
+        keys::OPTION_RELAY_SERVER => DEFAULT_RELAY_SERVER.to_owned(),
+        _ => String::new(),
+    }
+}
 
 pub const RENDEZVOUS_PORT: i32 = 21116;
 pub const RELAY_PORT: i32 = 21117;
@@ -1246,7 +1256,7 @@ impl Config {
             &DEFAULT_SETTINGS,
             k,
         )
-        .unwrap_or_default()
+        .unwrap_or_else(|| default_server_option(k))
     }
 
     pub fn get_bool_option(k: &str) -> bool {
@@ -1962,7 +1972,7 @@ impl PeerConfig {
     fn default_custom_image_quality() -> Vec<i32> {
         let f: f64 = UserDefaultConfig::read(keys::OPTION_CUSTOM_IMAGE_QUALITY)
             .parse()
-            .unwrap_or(50.0);
+            .unwrap_or(85.0);
         vec![f as _]
     }
 
@@ -2359,21 +2369,18 @@ impl UserDefaultConfig {
 
     pub fn get(&self, key: &str) -> String {
         match key {
-            #[cfg(any(target_os = "android", target_os = "ios"))]
             keys::OPTION_VIEW_STYLE => self.get_string(key, "adaptive", vec!["original"]),
-            #[cfg(not(any(target_os = "android", target_os = "ios")))]
-            keys::OPTION_VIEW_STYLE => self.get_string(key, "original", vec!["adaptive"]),
             keys::OPTION_SCROLL_STYLE => {
                 self.get_string(key, "scrollauto", vec!["scrolledge", "scrollbar"])
             }
             keys::OPTION_IMAGE_QUALITY => {
-                self.get_string(key, "balanced", vec!["best", "low", "custom"])
+                self.get_string(key, "custom", vec!["best", "balanced", "low"])
             }
             keys::OPTION_CODEC_PREFERENCE => {
                 self.get_string(key, "auto", vec!["vp8", "vp9", "av1", "h264", "h265"])
             }
-            keys::OPTION_CUSTOM_IMAGE_QUALITY => self.get_num_string(key, 50.0, 10.0, 0xFFF as f64),
-            keys::OPTION_CUSTOM_FPS => self.get_num_string(key, 30.0, 5.0, 120.0),
+            keys::OPTION_CUSTOM_IMAGE_QUALITY => self.get_num_string(key, 85.0, 10.0, 0xFFF as f64),
+            keys::OPTION_CUSTOM_FPS => self.get_num_string(key, 60.0, 5.0, 120.0),
             keys::OPTION_ENABLE_FILE_COPY_PASTE => self.get_string(key, "Y", vec!["", "N"]),
             keys::OPTION_EDGE_SCROLL_EDGE_THICKNESS => self.get_num_string(key, 100, 20, 150),
             keys::OPTION_TRACKPAD_SPEED => self.get_num_string(key, 100, 10, 1000),
@@ -3289,6 +3296,20 @@ mod tests {
 
     static CONFIG_STATE_TEST_LOCK: Mutex<()> = Mutex::new(());
 
+    #[test]
+    fn desklink_server_defaults_match_zto56_release() {
+        assert_eq!(RENDEZVOUS_SERVERS, &["10.202.22.90:21116"]);
+        assert_eq!(RS_PUB_KEY, "I17NeGkLtixLRMrtxXvY5jQ3gDiL8yqtktCrMVwb69I=");
+        assert_eq!(
+            default_server_option(keys::OPTION_API_SERVER),
+            "http://10.202.22.90:21114"
+        );
+        assert_eq!(
+            default_server_option(keys::OPTION_RELAY_SERVER),
+            "10.202.22.90:21117"
+        );
+    }
+
     struct ConfigStateTestGuard {
         original_config: Config,
         original_hard_settings: HashMap<String, String>,
@@ -3979,6 +4000,20 @@ mod tests {
             let cfg = toml::from_str::<PeerConfig>(wrong_field_str);
             assert_eq!(cfg, Ok(cfg_to_compare), "Failed to test wrong_field_str");
         }
+    }
+
+    #[test]
+    fn desklink_default_remote_display_options() {
+        let config = UserDefaultConfig::default();
+        assert_eq!(config.get(keys::OPTION_VIEW_STYLE), "adaptive");
+        assert_eq!(config.get(keys::OPTION_IMAGE_QUALITY), "custom");
+        assert_eq!(config.get(keys::OPTION_CUSTOM_IMAGE_QUALITY), "85");
+        assert_eq!(config.get(keys::OPTION_CUSTOM_FPS), "60");
+
+        let config = UserDefaultConfig {
+            options: HashMap::from([(keys::OPTION_CUSTOM_FPS.to_owned(), "120".to_owned())]),
+        };
+        assert_eq!(config.get(keys::OPTION_CUSTOM_FPS), "120");
     }
 
     #[test]
