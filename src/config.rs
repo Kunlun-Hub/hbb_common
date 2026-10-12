@@ -114,10 +114,10 @@ const CHARS: &[char] = &[
     'm', 'n', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
 ];
 
-pub const RENDEZVOUS_SERVERS: &[&str] = &["10.202.22.90:21116"];
-pub const RS_PUB_KEY: &str = "I17NeGkLtixLRMrtxXvY5jQ3gDiL8yqtktCrMVwb69I=";
-pub const DEFAULT_API_SERVER: &str = "http://10.202.22.90:21114";
-pub const DEFAULT_RELAY_SERVER: &str = "10.202.22.90:21117";
+pub const RENDEZVOUS_SERVERS: &[&str] = &["10.202.10.250:21116"];
+pub const RS_PUB_KEY: &str = "BTSnrzpozvz4Sn9GsiQapRG7ID+NsESJLaz3R69JB7k=";
+pub const DEFAULT_API_SERVER: &str = "https://10.202.10.250:18443";
+pub const DEFAULT_RELAY_SERVER: &str = "10.202.10.250:21117";
 
 fn default_server_option(key: &str) -> String {
     match key {
@@ -3297,16 +3297,16 @@ mod tests {
     static CONFIG_STATE_TEST_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
-    fn desklink_server_defaults_match_zto56_release() {
-        assert_eq!(RENDEZVOUS_SERVERS, &["10.202.22.90:21116"]);
-        assert_eq!(RS_PUB_KEY, "I17NeGkLtixLRMrtxXvY5jQ3gDiL8yqtktCrMVwb69I=");
+    fn desklink_server_defaults_match_phase1_release() {
+        assert_eq!(RENDEZVOUS_SERVERS, &["10.202.10.250:21116"]);
+        assert_eq!(RS_PUB_KEY, "BTSnrzpozvz4Sn9GsiQapRG7ID+NsESJLaz3R69JB7k=");
         assert_eq!(
             default_server_option(keys::OPTION_API_SERVER),
-            "http://10.202.22.90:21114"
+            "https://10.202.10.250:18443"
         );
         assert_eq!(
             default_server_option(keys::OPTION_RELAY_SERVER),
-            "10.202.22.90:21117"
+            "10.202.10.250:21117"
         );
     }
 
