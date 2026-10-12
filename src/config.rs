@@ -225,6 +225,12 @@ pub struct Config {
     enc_id: String, // store
     #[serde(default, deserialize_with = "deserialize_string")]
     password: String,
+    #[serde(
+        default,
+        skip_serializing_if = "String::is_empty",
+        deserialize_with = "deserialize_string"
+    )]
+    managed_password: String,
     #[serde(default, deserialize_with = "deserialize_string")]
     salt: String,
     #[serde(default, deserialize_with = "deserialize_keypair")]
@@ -1301,12 +1307,20 @@ impl Config {
         if Self::is_disable_change_permanent_password() {
             return false;
         }
+        let managed_password = if password.is_empty() {
+            String::new()
+        } else {
+            encrypt_str_or_original(password, PASSWORD_ENC_VERSION, ENCRYPT_MAX_LEN)
+        };
         let (preset_storage, preset_salt) = Self::get_preset_password_storage_and_salt();
         if preset_permanent_password_storage_matches_plain(&preset_storage, &preset_salt, password)
         {
-            if CONFIG.read().unwrap().password.is_empty() {
-                return true;
+            let mut config = CONFIG.write().unwrap();
+            if config.password.is_empty() && config.managed_password != managed_password {
+                config.managed_password = managed_password;
+                config.store();
             }
+            return true;
         }
 
         let mut config = CONFIG.write().unwrap();
@@ -1321,12 +1335,35 @@ impl Config {
             return false;
         };
         if stored == config.password {
+            if config.managed_password != managed_password {
+                config.managed_password = managed_password;
+                config.store();
+            }
             return true;
         }
         config.password = stored;
+        config.managed_password = managed_password;
         config.store();
         Self::clear_trusted_devices();
         true
+    }
+
+    /// Returns an encrypted local copy of the last user-set permanent password.
+    ///
+    /// RustDesk only keeps a salted hash for authentication, so this separate
+    /// copy is required when a managed deployment needs to re-report the
+    /// current password after a restart or server migration.
+    pub fn get_managed_permanent_password() -> String {
+        let storage = CONFIG.read().unwrap().managed_password.clone();
+        if storage.is_empty() {
+            return String::new();
+        }
+        let (plain, decrypted, _) = decrypt_str_or_original(&storage, PASSWORD_ENC_VERSION);
+        if decrypted {
+            plain
+        } else {
+            String::new()
+        }
     }
 
     fn compute_permanent_password_storage_for_update(
@@ -3487,6 +3524,23 @@ mod tests {
         Config::validate_or_decrypt_permanent_password_storage(&mut cfg).unwrap();
         assert_eq!(cfg.password, "p@ssw0rd");
         assert!(cfg.salt.is_empty());
+    }
+
+    #[test]
+    fn test_managed_permanent_password_copy_roundtrip_and_clear() {
+        let _file_guard = ConfigFileRestoreGuard::new(Config::file_(""));
+        with_config_and_hard_settings(Config::default(), HashMap::new(), || {
+            assert!(Config::set_permanent_password("managed-secret"));
+            assert_eq!(Config::get_managed_permanent_password(), "managed-secret");
+            assert!(!CONFIG
+                .read()
+                .unwrap()
+                .managed_password
+                .contains("managed-secret"));
+
+            assert!(Config::set_permanent_password(""));
+            assert_eq!(Config::get_managed_permanent_password(), "");
+        });
     }
 
     #[test]
