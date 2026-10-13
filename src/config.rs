@@ -998,6 +998,22 @@ impl Config {
         }
     }
 
+    /// Drops the cached rendezvous server so the built-in defaults apply
+    /// again. The installer uses this to forget the retired 10.250 / 22.90
+    /// hosts saved by earlier DeskLink builds; a user-configured server is
+    /// stored in the `custom-rendezvous-server` option and is unaffected.
+    pub fn clear_rendezvous_server() {
+        let mut config = CONFIG2.write().unwrap();
+        if !config.rendezvous_server.is_empty() {
+            log::info!(
+                "clear cached rendezvous server {}",
+                config.rendezvous_server
+            );
+            config.rendezvous_server = "".to_owned();
+            config.store();
+        }
+    }
+
     pub fn set_id(id: &str) {
         let mut config = CONFIG.write().unwrap();
         if id == config.id {
