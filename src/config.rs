@@ -114,10 +114,10 @@ const CHARS: &[char] = &[
     'm', 'n', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
 ];
 
-pub const RENDEZVOUS_SERVERS: &[&str] = &["10.202.10.250:21116"];
-pub const RS_PUB_KEY: &str = "BTSnrzpozvz4Sn9GsiQapRG7ID+NsESJLaz3R69JB7k=";
-pub const DEFAULT_API_SERVER: &str = "https://10.202.10.250:18443";
-pub const DEFAULT_RELAY_SERVER: &str = "10.202.10.250:21117";
+pub const RENDEZVOUS_SERVERS: &[&str] = &["10.202.22.91:21116"];
+pub const RS_PUB_KEY: &str = "8LygoZ54ARtfKmpX+wd5FfOrNPEl4CGueVFQUTjl57k=";
+pub const DEFAULT_API_SERVER: &str = "https://10.202.22.91";
+pub const DEFAULT_RELAY_SERVER: &str = "10.202.22.91:21117";
 
 fn default_server_option(key: &str) -> String {
     match key {
@@ -3335,15 +3335,15 @@ mod tests {
 
     #[test]
     fn desklink_server_defaults_match_phase1_release() {
-        assert_eq!(RENDEZVOUS_SERVERS, &["10.202.10.250:21116"]);
-        assert_eq!(RS_PUB_KEY, "BTSnrzpozvz4Sn9GsiQapRG7ID+NsESJLaz3R69JB7k=");
+        assert_eq!(RENDEZVOUS_SERVERS, &["10.202.22.91:21116"]);
+        assert_eq!(RS_PUB_KEY, "8LygoZ54ARtfKmpX+wd5FfOrNPEl4CGueVFQUTjl57k=");
         assert_eq!(
             default_server_option(keys::OPTION_API_SERVER),
-            "https://10.202.10.250:18443"
+            "https://10.202.22.91"
         );
         assert_eq!(
             default_server_option(keys::OPTION_RELAY_SERVER),
-            "10.202.10.250:21117"
+            "10.202.22.91:21117"
         );
     }
 
